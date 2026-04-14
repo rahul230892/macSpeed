@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+export PATH="/opt/homebrew/bin:$PATH"
 
 if [ -z "$1" ]; then
   echo "Usage: ./release.sh <version> (e.g. ./release.sh 1.1.0)"
