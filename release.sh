@@ -62,6 +62,8 @@ cask "netspeed" do
 
   app "NetSpeed.app"
 
+  uninstall quit: "com.netspeed.app"
+
   postflight do
     system_command "xattr",
                    args: ["-cr", "#{appdir}/NetSpeed.app"],
