@@ -66,8 +66,9 @@ The app and update ZIP are written to `dist/`.
 ## Creating a release
 
 The release script requires a clean Git working tree, GitHub CLI authentication,
-the Homebrew tap at `/opt/homebrew/Library/Taps/rahul230892/homebrew-tap`, and the
-NetSpeed Sparkle signing key in the login Keychain.
+the Homebrew tap at `/opt/homebrew/Library/Taps/rahul230892/homebrew-tap`, full
+Xcode, and the NetSpeed Sparkle signing key in the login Keychain. The private
+key must remain local and must not be uploaded to GitHub.
 
 ```bash
 ./release.sh 1.2.0 2
@@ -98,4 +99,3 @@ dialog. In-app update archives are independently authenticated with Sparkle's
 Ed25519 signatures. The GitHub repository, Homebrew tap, and Sparkle signing key
 must therefore be protected with strong credentials and two-factor
 authentication.
-

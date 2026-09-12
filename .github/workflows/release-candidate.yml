@@ -1,0 +1,28 @@
+name: Release Candidate
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal app
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: ./build.sh "${VERSION#v}" "$GITHUB_RUN_NUMBER"
+
+      - name: Upload unsigned release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetSpeed-${{ github.ref_name }}
+          path: dist/NetSpeed.zip
+          if-no-files-found: error
+          retention-days: 7
