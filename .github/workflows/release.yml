@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate release secret
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: test -n "$SPARKLE_PRIVATE_KEY"
+
+      - name: Build universal app
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: ./build.sh "${VERSION#v}" "$GITHUB_RUN_NUMBER"
+
+      - name: Generate signed update feed
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          mkdir -p dist/updates
+          mv dist/NetSpeed.zip dist/updates/NetSpeed.zip
+
+          GENERATE_APPCAST="$(find .build/SourcePackages -type f -name generate_appcast -perm -111 -print -quit)"
+          test -x "$GENERATE_APPCAST"
+
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$GENERATE_APPCAST" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/rahul230892/macSpeed/releases/download/v${VERSION}/" \
+            --link "https://github.com/rahul230892/macSpeed/releases/latest" \
+            --maximum-versions 1 \
+            --maximum-deltas 0 \
+            dist/updates
+
+          test -s dist/updates/appcast.xml
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/updates/NetSpeed.zip \
+            dist/updates/appcast.xml \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "NetSpeed $GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag

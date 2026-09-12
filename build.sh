@@ -1,70 +1,74 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 APP_NAME="NetSpeed"
-BUNDLE_IDENTIFIER="com.rahul.NetSpeed"
-APP_DIR="${APP_NAME}.app"
-CONTENTS_DIR="${APP_DIR}/Contents"
-MACOS_DIR="${CONTENTS_DIR}/MacOS"
-RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+VERSION="${1:-1.2.0}"
+BUILD_NUMBER="${2:-$(date -u +%Y%m%d%H%M)}"
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+DERIVED_DATA="${PROJECT_ROOT}/.build/DerivedData"
+PACKAGE_CACHE="${PROJECT_ROOT}/.build/SourcePackages"
+DIST_DIR="${PROJECT_ROOT}/dist"
+BUILT_APP="${DERIVED_DATA}/Build/Products/Release/${APP_NAME}.app"
+OUTPUT_APP="${DIST_DIR}/${APP_NAME}.app"
 
-echo "Cleaning old app bundle..."
-rm -rf "${APP_DIR}"
-
-echo "Creating bundle structure..."
-mkdir -p "${MACOS_DIR}"
-mkdir -p "${RESOURCES_DIR}"
-
-if [ -f "NetSpeed/Assets.xcassets/AppIcon.appiconset" ]; then
-    echo "Note: App icon handling might require asset catalog compilation."
+if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+    echo "Invalid version '${VERSION}'. Expected a value such as 1.2.0."
+    exit 1
 fi
 
-echo "Writing Info.plist..."
-cat <<EOF > "${CONTENTS_DIR}/Info.plist"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>${APP_NAME}</string>
-    <key>CFBundleIdentifier</key>
-    <string>${BUNDLE_IDENTIFIER}</string>
-    <key>CFBundleName</key>
-    <string>${APP_NAME}</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>LSUIElement</key>
-    <true/>
-</dict>
-</plist>
-EOF
+if [[ ! "${BUILD_NUMBER}" =~ ^[0-9]+$ ]]; then
+    echo "Invalid build number '${BUILD_NUMBER}'. It must contain only digits."
+    exit 1
+fi
 
-echo "Compiling Swift files..."
-swiftc \
-    -parse-as-library \
-    -framework SwiftUI \
-    -framework AppKit \
-    -framework SystemConfiguration \
-    -o "${MACOS_DIR}/${APP_NAME}" \
-    NetSpeed/NetworkMonitor.swift \
-    NetSpeed/SpeedFormatter.swift \
-    NetSpeed/MenuBarView.swift \
-    NetSpeed/SettingsView.swift \
-    NetSpeed/ContentView.swift \
-    NetSpeed/NetSpeedApp.swift
+if ! command -v xcodebuild >/dev/null 2>&1; then
+    echo "Xcode is required. Install Xcode and select it with xcode-select."
+    exit 1
+fi
 
-echo "Code signing application..."
-codesign --force --deep --sign - "${APP_DIR}"
+if ! xcodebuild -version >/dev/null 2>&1; then
+    echo "Full Xcode is not selected. Install Xcode, then run:"
+    echo "  sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer"
+    exit 1
+fi
 
-echo "Zipping application for Homebrew Cask..."
-rm -f "${APP_NAME}.zip"
-zip -r "${APP_NAME}.zip" "${APP_DIR}"
+rm -rf "${DERIVED_DATA}" "${DIST_DIR}"
+mkdir -p "${DERIVED_DATA}" "${PACKAGE_CACHE}" "${DIST_DIR}"
 
-echo "Build successful! App bundled at: $(pwd)/${APP_DIR}"
-echo "Zip archive ready at: $(pwd)/${APP_NAME}.zip"
+echo "Building ${APP_NAME} ${VERSION} (${BUILD_NUMBER}) for Apple silicon and Intel…"
+xcodebuild \
+    -project "${PROJECT_ROOT}/NetSpeed.xcodeproj" \
+    -scheme "${APP_NAME}" \
+    -configuration Release \
+    -destination "generic/platform=macOS" \
+    -derivedDataPath "${DERIVED_DATA}" \
+    -clonedSourcePackagesDirPath "${PACKAGE_CACHE}" \
+    MARKETING_VERSION="${VERSION}" \
+    CURRENT_PROJECT_VERSION="${BUILD_NUMBER}" \
+    PRODUCT_BUNDLE_IDENTIFIER="com.rahul.NetSpeed" \
+    MACOSX_DEPLOYMENT_TARGET="14.0" \
+    ARCHS="arm64 x86_64" \
+    ONLY_ACTIVE_ARCH=NO \
+    CODE_SIGN_STYLE=Manual \
+    CODE_SIGN_IDENTITY="-" \
+    DEVELOPMENT_TEAM="" \
+    build
+
+if [[ ! -d "${BUILT_APP}" ]]; then
+    echo "Build succeeded but ${BUILT_APP} was not produced."
+    exit 1
+fi
+
+ditto "${BUILT_APP}" "${OUTPUT_APP}"
+codesign --verify --deep --strict --verbose=2 "${OUTPUT_APP}"
+
+ARCHITECTURES="$(lipo -archs "${OUTPUT_APP}/Contents/MacOS/${APP_NAME}")"
+if [[ " ${ARCHITECTURES} " != *" arm64 "* || " ${ARCHITECTURES} " != *" x86_64 "* ]]; then
+    echo "Expected a universal binary, found: ${ARCHITECTURES}"
+    exit 1
+fi
+
+ditto -c -k --sequesterRsrc --keepParent "${OUTPUT_APP}" "${DIST_DIR}/${APP_NAME}.zip"
+
+echo "Built ${OUTPUT_APP}"
+echo "Update archive: ${DIST_DIR}/${APP_NAME}.zip"

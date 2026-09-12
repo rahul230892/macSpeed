@@ -14,6 +14,8 @@
 		A1000009 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000A /* MenuBarView.swift */; };
 		A100000B /* SpeedFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C /* SpeedFormatter.swift */; };
 		A100000D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E /* SettingsView.swift */; };
+		A1000013 /* UpdaterController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000014 /* UpdaterController.swift */; };
+		A1000015 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A1000016 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,7 @@
 		A1000010 /* NetSpeed.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NetSpeed.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1000012 /* NetSpeed.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NetSpeed.entitlements; sourceTree = "<group>"; };
+		A1000014 /* UpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -34,6 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1000015 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -57,6 +61,7 @@
 				A100000A /* MenuBarView.swift */,
 				A100000C /* SpeedFormatter.swift */,
 				A100000E /* SettingsView.swift */,
+				A1000014 /* UpdaterController.swift */,
 				A1000006 /* Assets.xcassets */,
 				A1000011 /* Info.plist */,
 				A1000012 /* NetSpeed.entitlements */,
@@ -88,6 +93,9 @@
 			dependencies = (
 			);
 			name = NetSpeed;
+			packageProductDependencies = (
+				A1000016 /* Sparkle */,
+			);
 			productName = NetSpeed;
 			productReference = A1000010 /* NetSpeed.app */;
 			productType = "com.apple.product-type.application";
@@ -116,6 +124,9 @@
 				Base,
 			);
 			mainGroup = A1000020;
+			packageReferences = (
+				A1000017 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = A1000022 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -147,6 +158,7 @@
 				A1000009 /* MenuBarView.swift in Sources */,
 				A100000B /* SpeedFormatter.swift in Sources */,
 				A100000D /* SettingsView.swift in Sources */,
+				A1000013 /* UpdaterController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,9 +286,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = NetSpeed/NetSpeed.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NetSpeed/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NetSpeed;
@@ -287,16 +299,14 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.netspeed.app;
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rahul.NetSpeed;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 			};
 			name = Debug;
 		};
@@ -307,9 +317,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = NetSpeed/NetSpeed.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NetSpeed/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NetSpeed;
@@ -320,16 +330,14 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.netspeed.app;
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rahul.NetSpeed;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 			};
 			name = Release;
 		};
@@ -355,6 +363,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1000017 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.9.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1000016 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1000017 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1000050 /* Project object */;
 }

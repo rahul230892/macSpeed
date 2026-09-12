@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project NetSpeed.xcodeproj \
+            -scheme NetSpeed \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath .build/ci \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: Validate project metadata
+        run: |
+          plutil -lint NetSpeed/Info.plist NetSpeed/NetSpeed.entitlements
+          test "$(xcodebuild -project NetSpeed.xcodeproj -scheme NetSpeed -showBuildSettings | awk '/PRODUCT_BUNDLE_IDENTIFIER/{print $3; exit}')" = "com.rahul.NetSpeed"

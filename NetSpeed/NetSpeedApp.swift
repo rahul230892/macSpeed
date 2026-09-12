@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct NetSpeedApp: App {
     @StateObject private var networkMonitor = NetworkMonitor()
+    private let updaterController = UpdaterController()
     @AppStorage("showUpload") private var showUpload = true
     @AppStorage("showDownload") private var showDownload = true
     
@@ -10,14 +11,20 @@ struct NetSpeedApp: App {
         #if os(macOS)
         // Menu bar app for macOS
         MenuBarExtra {
-            MenuBarView(networkMonitor: networkMonitor)
+            MenuBarView(
+                networkMonitor: networkMonitor,
+                updaterController: updaterController
+            )
         } label: {
             Text(menuBarLabel)
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
         }
         
         Settings {
-            SettingsView(networkMonitor: networkMonitor)
+            SettingsView(
+                networkMonitor: networkMonitor,
+                updaterController: updaterController
+            )
         }
         #else
         // Regular window for iOS/iPadOS

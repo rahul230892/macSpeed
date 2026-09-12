@@ -6,20 +6,27 @@ import Combine
 import Darwin
 #endif
 
-/// Monitors network traffic and calculates real-time upload/download speeds
-class NetworkMonitor: ObservableObject {
+/// Monitors network traffic and calculates real-time upload/download speeds.
+/// Counters are tracked per interface so connecting or disconnecting an
+/// interface does not produce a false spike or erase a complete sample.
+@MainActor
+final class NetworkMonitor: ObservableObject {
     @Published var uploadSpeed: Double = 0 // bytes per second
     @Published var downloadSpeed: Double = 0 // bytes per second
     @Published var isConnected: Bool = true
     @Published var connectionType: String = "Unknown"
     
     private var timer: Timer?
-    private var lastBytesReceived: UInt64 = 0
-    private var lastBytesSent: UInt64 = 0
+    private var previousCounters: [String: InterfaceCounters] = [:]
     private var lastCheckTime: Date = Date()
     
     private let pathMonitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "NetworkMonitor")
+
+    private struct InterfaceCounters {
+        let received: UInt64
+        let sent: UInt64
+    }
     
     init() {
         setupPathMonitor()
@@ -33,17 +40,18 @@ class NetworkMonitor: ObservableObject {
     
     private func setupPathMonitor() {
         pathMonitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
-                self?.isConnected = path.status == .satisfied
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isConnected = path.status == .satisfied
                 
                 if path.usesInterfaceType(.wifi) {
-                    self?.connectionType = "WiFi"
+                    self.connectionType = "Wi-Fi"
                 } else if path.usesInterfaceType(.cellular) {
-                    self?.connectionType = "Cellular"
+                    self.connectionType = "Cellular"
                 } else if path.usesInterfaceType(.wiredEthernet) {
-                    self?.connectionType = "Ethernet"
+                    self.connectionType = "Ethernet"
                 } else {
-                    self?.connectionType = "Unknown"
+                    self.connectionType = path.status == .satisfied ? "Other" : "Offline"
                 }
             }
         }
@@ -51,15 +59,16 @@ class NetworkMonitor: ObservableObject {
     }
     
     func startMonitoring() {
-        // Get initial values
-        let (received, sent) = getNetworkBytes()
-        lastBytesReceived = received
-        lastBytesSent = sent
+        guard timer == nil else { return }
+
+        previousCounters = getNetworkCounters()
         lastCheckTime = Date()
         
         // Update every second
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateSpeeds()
+            Task { @MainActor [weak self] in
+                self?.updateSpeeds()
+            }
         }
     }
     
@@ -69,37 +78,51 @@ class NetworkMonitor: ObservableObject {
     }
     
     private func updateSpeeds() {
-        let (currentReceived, currentSent) = getNetworkBytes()
+        let currentCounters = getNetworkCounters()
         let currentTime = Date()
         
         let timeInterval = currentTime.timeIntervalSince(lastCheckTime)
         
         if timeInterval > 0 {
-            let receivedDiff = currentReceived > lastBytesReceived ? currentReceived - lastBytesReceived : 0
-            let sentDiff = currentSent > lastBytesSent ? currentSent - lastBytesSent : 0
-            
-            DispatchQueue.main.async {
-                self.downloadSpeed = Double(receivedDiff) / timeInterval
-                self.uploadSpeed = Double(sentDiff) / timeInterval
+            var receivedDiff: UInt64 = 0
+            var sentDiff: UInt64 = 0
+
+            for (name, current) in currentCounters {
+                guard let previous = previousCounters[name] else { continue }
+
+                // A lower value indicates a reset or a wrapped legacy counter.
+                // Treat it as a new baseline rather than displaying a huge spike.
+                if current.received >= previous.received {
+                    receivedDiff += current.received - previous.received
+                }
+                if current.sent >= previous.sent {
+                    sentDiff += current.sent - previous.sent
+                }
             }
+
+            downloadSpeed = smoothed(previous: downloadSpeed, sample: Double(receivedDiff) / timeInterval)
+            uploadSpeed = smoothed(previous: uploadSpeed, sample: Double(sentDiff) / timeInterval)
         }
         
-        lastBytesReceived = currentReceived
-        lastBytesSent = currentSent
+        previousCounters = currentCounters
         lastCheckTime = currentTime
     }
+
+    private func smoothed(previous: Double, sample: Double) -> Double {
+        let smoothingFactor = 0.45
+        return previous == 0 ? sample : smoothingFactor * sample + (1 - smoothingFactor) * previous
+    }
     
-    /// Get total bytes received and sent across all network interfaces
-    private func getNetworkBytes() -> (received: UInt64, sent: UInt64) {
-        var totalReceived: UInt64 = 0
-        var totalSent: UInt64 = 0
+    /// Reads counters for active physical network interfaces.
+    private func getNetworkCounters() -> [String: InterfaceCounters] {
+        var counters: [String: InterfaceCounters] = [:]
         
         #if os(macOS)
         // Use getifaddrs on macOS for accurate network statistics
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else {
-            return (0, 0)
+            return [:]
         }
         
         defer { freeifaddrs(ifaddr) }
@@ -107,14 +130,20 @@ class NetworkMonitor: ObservableObject {
         var ptr = firstAddr
         while true {
             let interface = ptr.pointee
-            let name = String(cString: interface.ifa_name)
-            
-            // Skip loopback interface
-            if name != "lo0" {
-                if let data = interface.ifa_data {
+            let family = interface.ifa_addr?.pointee.sa_family
+            let flags = Int32(interface.ifa_flags)
+            let isActive = flags & IFF_UP != 0 && flags & IFF_RUNNING != 0
+
+            // Link-layer records contain the interface counters. Restricting the
+            // default view to en* avoids counting VPN tunnel traffic twice.
+            if family == UInt8(AF_LINK), isActive {
+                let name = String(cString: interface.ifa_name)
+                if name.hasPrefix("en"), let data = interface.ifa_data {
                     let networkData = data.assumingMemoryBound(to: if_data.self).pointee
-                    totalReceived += UInt64(networkData.ifi_ibytes)
-                    totalSent += UInt64(networkData.ifi_obytes)
+                    counters[name] = InterfaceCounters(
+                        received: UInt64(networkData.ifi_ibytes),
+                        sent: UInt64(networkData.ifi_obytes)
+                    )
                 }
             }
             
@@ -125,13 +154,15 @@ class NetworkMonitor: ObservableObject {
         // iOS: Use a simpler approach with URLSession metrics or estimate
         // Note: iOS doesn't provide direct access to interface statistics
         // We'll use a file-based approach for demo purposes
-        if let counters = readIOSNetworkCounters() {
-            totalReceived = counters.received
-            totalSent = counters.sent
+        if let totals = readIOSNetworkCounters() {
+            counters["combined"] = InterfaceCounters(
+                received: totals.received,
+                sent: totals.sent
+            )
         }
         #endif
         
-        return (totalReceived, totalSent)
+        return counters
     }
     
     #if os(iOS)

@@ -79,6 +79,7 @@ struct AnimatedQuitButton: View {
 /// Menu bar dropdown view for macOS
 struct MenuBarView: View {
     @ObservedObject var networkMonitor: NetworkMonitor
+    let updaterController: UpdaterController
     @AppStorage("showUpload") private var showUpload = true
     @AppStorage("showDownload") private var showDownload = true
     
@@ -137,6 +138,24 @@ struct MenuBarView: View {
             }
             .padding(.horizontal, 8)
             
+            Divider()
+
+            VStack(spacing: 4) {
+                SettingsLink {
+                    Label("Settings…", systemImage: "gearshape")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Button {
+                    updaterController.checkForUpdates()
+                } label: {
+                    Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 8)
+
             Divider()
             
             // Animated Red Quit button
