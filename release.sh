@@ -98,17 +98,17 @@ cask "netspeed" do
 
   url "https://github.com/${REPOSITORY}/releases/download/v#{version}/NetSpeed.zip"
   name "NetSpeed"
-  desc "Live network speed monitor for the macOS menu bar"
+  desc "Live network speed monitor for the menu bar"
   homepage "https://github.com/${REPOSITORY}"
 
   auto_updates true
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "NetSpeed.app"
 
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-dr", "com.apple.quarantine", "#{appdir}/NetSpeed.app"]
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args: ["-dr", "com.apple.quarantine", "{{appdir}}/NetSpeed.app"]
   end
 
   uninstall quit: "com.rahul.NetSpeed"
