@@ -34,7 +34,7 @@ final class NetworkMonitor: ObservableObject {
     }
     
     deinit {
-        stopMonitoring()
+        timer?.invalidate()
         pathMonitor.cancel()
     }
     
